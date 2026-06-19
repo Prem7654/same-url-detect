@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Firebase URL Compare 4 Box Fixed Layout</title>
+  <style>
+    :root{
+      --bg:#050713; --card:rgba(12,20,38,.82); --head:rgba(255,255,255,.055);
+      --border:rgba(150,180,255,.22); --text:#eef6ff; --muted:#9fb2d4;
+      --green:#24e38a; --red:#ff4d72; --blue:#4aa8ff; --cyan:#38f2ff; --yellow:#ffd166; --pink:#ff4fd8;
+      --shadow:0 24px 70px rgba(0,0,0,.42);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0; min-height:100vh; color:var(--text); font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;
+      background:
+        radial-gradient(circle at 15% 10%,rgba(56,242,255,.22),transparent 30%),
+        radial-gradient(circle at 88% 20%,rgba(255,79,216,.18),transparent 30%),
+        linear-gradient(135deg,#050713,#0a1731 48%,#050713);
+      overflow:auto;
+    }
+    body:before{content:"";position:fixed;inset:0;z-index:-1;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px;animation:grid 18s linear infinite;mask-image:radial-gradient(circle,black,transparent 78%)}
+    @keyframes grid{to{background-position:112px 56px}}
+    .wrap{width:100%;min-width:980px;padding:14px;}
+    .hero{border:1px solid var(--border);border-radius:22px;background:linear-gradient(135deg,rgba(255,255,255,.10),rgba(255,255,255,.035));box-shadow:var(--shadow);backdrop-filter:blur(16px);padding:14px 18px;margin-bottom:12px;animation:pop .45s ease both;display:flex;align-items:center;justify-content:space-between;gap:12px}
+    @keyframes pop{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+    h1{margin:0;font-size:28px;white-space:nowrap}.grad{background:linear-gradient(90deg,#fff,var(--cyan),#9b7cff,var(--pink));background-size:220% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;animation:text 4s linear infinite}@keyframes text{to{background-position:220%}}
+    .sub{color:var(--muted);font-size:13px;line-height:1.35}.sub b{color:#fff}
+    .actions{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:18px;background:rgba(5,10,22,.74);backdrop-filter:blur(16px);box-shadow:var(--shadow)}
+    button{border:0;border-radius:12px;padding:10px 13px;font-weight:900;cursor:pointer;color:#06111f;background:linear-gradient(135deg,var(--cyan),var(--blue));transition:.14s;box-shadow:0 10px 24px rgba(77,163,255,.22)}button:hover{transform:translateY(-2px);filter:brightness(1.08)}button.secondary{background:linear-gradient(135deg,#1b2842,#121b31);color:var(--text);border:1px solid var(--border)}button.green{background:linear-gradient(135deg,#24e38a,#89ffcb)}button.red{background:linear-gradient(135deg,#ff4d72,#ff9368);color:white}
+
+    /* EXACT FORMAT: 4 boxes, 2 columns x 2 rows. Never collapse. */
+    .layout{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      grid-template-rows:calc((100vh - 158px)/2) calc((100vh - 158px)/2);
+      gap:12px;
+      min-height:650px;
+    }
+    .box{border:1px solid var(--border);background:var(--card);border-radius:22px;box-shadow:var(--shadow);backdrop-filter:blur(16px);overflow:hidden;display:flex;flex-direction:column;min-height:300px;animation:boxIn .5s ease both}.box:nth-child(2){animation-delay:.04s}.box:nth-child(3){animation-delay:.08s}.box:nth-child(4){animation-delay:.12s}@keyframes boxIn{from{opacity:0;transform:scale(.985) translateY(10px)}to{opacity:1;transform:none}}
+    .head{height:54px;min-height:54px;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:0 14px;border-bottom:1px solid var(--border);font-weight:950;background:var(--head);white-space:nowrap}
+    .head span:first-child{overflow:hidden;text-overflow:ellipsis}.pill{font-size:12px;color:var(--muted);padding:6px 10px;border-radius:999px;background:rgba(255,255,255,.075);border:1px solid rgba(255,255,255,.09);white-space:nowrap}.same .head{color:var(--green)}.new .head{color:var(--red)}
+    textarea{flex:1;width:100%;height:100%;resize:none;background:rgba(2,9,20,.80);color:var(--text);border:0;outline:none;padding:16px;font-size:14px;line-height:1.55;font-family:Consolas,Monaco,monospace}textarea:focus{box-shadow:inset 0 0 0 2px rgba(56,242,255,.50)}
+    .out{flex:1;padding:12px;overflow:auto;background:rgba(0,0,0,.10)}
+    .item{display:flex;gap:9px;padding:10px;margin-bottom:8px;background:rgba(255,255,255,.055);border:1px solid rgba(255,255,255,.075);border-radius:14px;word-break:break-all;font-family:Consolas,Monaco,monospace;font-size:13px;line-height:1.35;animation:item .22s ease both;transition:.14s}.item:hover{transform:translateX(4px);border-color:rgba(56,242,255,.30);background:rgba(255,255,255,.085)}@keyframes item{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .idx{min-width:30px;color:var(--muted);font-family:Arial;font-weight:950}.tag{font-family:Arial;font-weight:900;font-size:11px;border-radius:999px;padding:3px 7px;margin-right:4px;white-space:nowrap}.tag.left{background:rgba(255,209,102,.16);color:var(--yellow);border:1px solid rgba(255,209,102,.25)}.tag.right{background:rgba(255,77,114,.16);color:var(--red);border:1px solid rgba(255,77,114,.25)}
+    .empty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:20px}.toast{position:fixed;right:18px;bottom:18px;z-index:20;padding:13px 15px;border-radius:16px;background:rgba(8,16,30,.94);border:1px solid rgba(56,242,255,.30);box-shadow:var(--shadow);opacity:0;transform:translateY(16px) scale(.96);pointer-events:none;transition:.25s;font-weight:850}.toast.show{opacity:1;transform:none}
+    @media(max-height:760px){.layout{grid-template-rows:300px 300px}.wrap{min-width:980px}.hero{padding:10px 14px}.actions{padding:8px}.head{height:48px;min-height:48px}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="hero">
+      <div>
+        <h1>🔥 Firebase URL <span class="grad">4 Box Compare</span></h1>
+        <div class="sub">Upar dono box me text paste karo. Niche left = <b>same</b>. Niche right = <b>unmatched/new</b>.</div>
+      </div>
+      <div class="sub">Layout fixed: 2 left/right columns + 2 top/bottom rows</div>
+    </div>
+    <div class="actions">
+      <button onclick="compareNow()">🔍 Detect & Compare</button>
+      <button class="green" onclick="copyList('same')">✅ Copy Same</button>
+      <button class="secondary" onclick="copyList('rightOnly')">🆕 Copy Right New</button>
+      <button class="secondary" onclick="copyList('unmatched')">⚠️ Copy Unmatched</button>
+      <button class="red" onclick="clearAll()">🧹 Clear</button>
+    </div>
+    <div class="layout">
+      <section class="box"><div class="head"><span>📥 LEFT TOP — paste side-1 / old text</span><span class="pill" id="leftCount">0 URLs</span></div><textarea id="leftInput" placeholder="Left top me paste karo...&#10;https://abc-default-rtdb.firebaseio.com/.json&#10;TARGET: xyz-default-rtdb&#10;Any messy text allowed"></textarea></section>
+      <section class="box"><div class="head"><span>📤 RIGHT TOP — paste side-2 / new text</span><span class="pill" id="rightCount">0 URLs</span></div><textarea id="rightInput" placeholder="Right top me paste karo...&#10;URLs text ke andar se auto detect honge"></textarea></section>
+      <section class="box same"><div class="head"><span>✅ LEFT BOTTOM — SAME MATCHED URLS</span><span class="pill" id="sameCount">0 same</span></div><div class="out" id="sameOut"></div></section>
+      <section class="box new"><div class="head"><span>🆕 RIGHT BOTTOM — UNMATCHED / NEW URLS</span><span class="pill" id="newCount">0 new</span></div><div class="out" id="newOut"></div></section>
+    </div>
+  </div>
+  <div class="toast" id="toast">Copied</div>
+<script>
+let last = { same: [], rightOnly: [], leftOnly: [], unmatched: [] };
+let timer;
+function normalizeFirebaseUrl(raw){
+  if(!raw) return null; let s=String(raw).trim();
+  s=s.replace(/^\[/,'').replace(/\]$/,'').replace(/^\(/,'').replace(/\)$/,'').replace(/^<|>$/g,'').replace(/[),.;'"`\]\}]+$/g,'');
+  if(/^[a-z0-9-]+-default-rtdb$/i.test(s)) s=s+'.firebaseio.com';
+  if(!/firebaseio\.com/i.test(s)) return null;
+  if(!/^https?:\/\//i.test(s)) s='https://'+s;
+  try{const u=new URL(s); const host=u.hostname.toLowerCase(); if(!host.endsWith('firebaseio.com')) return null; return 'https://'+host;}catch(e){return null;}
+}
+function extractFirebaseUrls(text){
+  const found=[]; const input=String(text||''); let m;
+  const urlRegex=/(?:https?:\/\/)?[a-z0-9.-]+\.firebaseio\.com(?:\/[^\s\])}>'"]*)?/gi;
+  while((m=urlRegex.exec(input))!==null){const n=normalizeFirebaseUrl(m[0]); if(n) found.push(n);}
+  const mdRegex=/\((https?:\/\/[^\s)]+firebaseio\.com[^\s)]*)\)/gi;
+  while((m=mdRegex.exec(input))!==null){const n=normalizeFirebaseUrl(m[1]); if(n) found.push(n);}
+  const targetRegex=/\b([a-z0-9-]+-default-rtdb)\b/gi;
+  while((m=targetRegex.exec(input))!==null){const n=normalizeFirebaseUrl(m[1]); if(n) found.push(n);}
+  return found;
+}
+function unique(arr){const s=new Set(),o=[]; for(const x of arr){if(!s.has(x)){s.add(x);o.push(x)}} return o;}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));}
+function render(id, arr){
+  const el=document.getElementById(id);
+  if(!arr.length){el.innerHTML='<div class="empty">No URLs here</div>'; return;}
+  el.innerHTML=arr.map((x,i)=>{
+    const isObj=typeof x==='object'; const url=isObj?x.url:x; const side=isObj?x.side:'';
+    const tag=side?`<span class="tag ${side==='LEFT ONLY'?'left':'right'}">${side}</span>`:'';
+    return `<div class="item" style="animation-delay:${Math.min(i*.018,.25)}s"><span class="idx">${i+1}.</span><span>${tag}${esc(url)}</span></div>`;
+  }).join('');
+}
+function compareNow(){
+  const left=unique(extractFirebaseUrls(document.getElementById('leftInput').value));
+  const right=unique(extractFirebaseUrls(document.getElementById('rightInput').value));
+  const ls=new Set(left), rs=new Set(right);
+  const same=left.filter(u=>rs.has(u));
+  const leftOnly=left.filter(u=>!rs.has(u));
+  const rightOnly=right.filter(u=>!ls.has(u));
+  const unmatched=[...rightOnly.map(url=>({side:'RIGHT NEW',url})), ...leftOnly.map(url=>({side:'LEFT ONLY',url}))];
+  last={same,rightOnly,leftOnly,unmatched};
+  document.getElementById('leftCount').textContent=left.length+' URLs';
+  document.getElementById('rightCount').textContent=right.length+' URLs';
+  document.getElementById('sameCount').textContent=same.length+' same';
+  document.getElementById('newCount').textContent=rightOnly.length+' new / '+leftOnly.length+' missing';
+  render('sameOut',same); render('newOut',unmatched);
+}
+function showToast(msg){const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),1600)}
+function copyList(key){const arr=last[key]||[]; const text=arr.map(x=>typeof x==='object'?`${x.side}: ${x.url}`:x).join('\n'); navigator.clipboard.writeText(text).then(()=>showToast('Copied '+arr.length+' URL(s)')).catch(()=>prompt('Copy manually:',text));}
+function clearAll(){document.getElementById('leftInput').value='';document.getElementById('rightInput').value='';compareNow();showToast('Cleared')}
+function schedule(){clearTimeout(timer); timer=setTimeout(compareNow,120)}
+document.getElementById('leftInput').addEventListener('input',schedule);
+document.getElementById('rightInput').addEventListener('input',schedule);
+compareNow();
+</script>
+</body>
+</html>
