@@ -27,6 +27,7 @@
     .actions{display:flex;gap:9px;flex-wrap:wrap;margin-bottom:12px;padding:10px;border:1px solid var(--border);border-radius:18px;background:rgba(5,10,22,.74);backdrop-filter:blur(16px);box-shadow:var(--shadow)}
     button{border:0;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;color:#06111f;background:linear-gradient(135deg,var(--cyan),var(--blue));transition:.14s;box-shadow:0 10px 24px rgba(77,163,255,.22)}button:hover{transform:translateY(-2px);filter:brightness(1.08)}
     button.green{background:linear-gradient(135deg,#24e38a,#89ffcb)}
+    button.yellow{background:linear-gradient(135deg,#ffd166,#ffe29a);color:#3a2c00}
     button.secondary{background:linear-gradient(135deg,#1b2842,#121b31);color:var(--text);border:1px solid var(--border)}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .box{border:1px solid var(--border);background:var(--card);border-radius:22px;box-shadow:var(--shadow);backdrop-filter:blur(16px);overflow:hidden;display:flex;flex-direction:column}
@@ -62,6 +63,7 @@
     <div class="actions">
       <button onclick="compareNow()">🔍 Detect &amp; Compare</button>
       <button class="green" onclick="copyAlag()">📋 Copy Alag URLs (1 tap)</button>
+      <button class="yellow" onclick="copyMine()">📋 Copy Mine (LEFT)</button>
       <button class="secondary" onclick="swapSides()">🔄 Swap Left ↔ Right</button>
       <button class="secondary" onclick="clearAll()">🧹 Clear</button>
     </div>
@@ -183,6 +185,15 @@ function copyAlag(){
   const text = lastAlag.join('\n');
   navigator.clipboard.writeText(text)
     .then(() => showToast('Copied ' + lastAlag.length + ' alag URL(s) ✅'))
+    .catch(() => prompt('Copy manually:', text));
+}
+
+function copyMine(){
+  const text = document.getElementById('leftInput').value.trim();
+  if(!text){ showToast('Left box khaali hai — pehle apne URLs daalo'); return; }
+  const count = text.split(/\r?\n/).filter(Boolean).length;
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('Copied ' + count + ' mine URL(s) ✅'))
     .catch(() => prompt('Copy manually:', text));
 }
 
