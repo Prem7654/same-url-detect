@@ -28,6 +28,7 @@
     button{border:0;border-radius:12px;padding:10px 14px;font-weight:900;cursor:pointer;color:#06111f;background:linear-gradient(135deg,var(--cyan),var(--blue));transition:.14s;box-shadow:0 10px 24px rgba(77,163,255,.22)}button:hover{transform:translateY(-2px);filter:brightness(1.08)}
     button.green{background:linear-gradient(135deg,#24e38a,#89ffcb)}
     button.yellow{background:linear-gradient(135deg,#ffd166,#ffe29a);color:#3a2c00}
+    button.pink{background:linear-gradient(135deg,#ff4fd8,#c86bff);color:#fff}
     button.secondary{background:linear-gradient(135deg,#1b2842,#121b31);color:var(--text);border:1px solid var(--border)}
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
     .box{border:1px solid var(--border);background:var(--card);border-radius:22px;box-shadow:var(--shadow);backdrop-filter:blur(16px);overflow:hidden;display:flex;flex-direction:column}
@@ -64,6 +65,7 @@
       <button onclick="compareNow()">🔍 Detect &amp; Compare</button>
       <button class="green" onclick="copyAlag()">📋 Copy Alag URLs (1 tap)</button>
       <button class="yellow" onclick="copyMine()">📋 Copy Mine (LEFT)</button>
+      <button class="pink" onclick="copyAll()">📋 Copy All (Mine + Alag)</button>
       <button class="secondary" onclick="swapSides()">🔄 Swap Left ↔ Right</button>
       <button class="secondary" onclick="clearAll()">🧹 Clear</button>
     </div>
@@ -94,6 +96,7 @@
 
 <script>
 let lastAlag = [];
+let lastAlagUrls = [];
 
 /* Normalize any RTDB URL / slug to a comparable project key:
    "https://bank-e-kyc-default-rtdb.firebaseio.com/.json"  -> "bank-e-kyc"
@@ -116,49 +119,57 @@ function projectKey(raw){
   return s || null;
 }
 
-function extractKeys(text){
-  const keys = [];
+function extractUrls(text){
+  const items = [];
   const seen = new Set();
   const input = String(text || '');
+  function add(k, url){
+    if(k && !seen.has(k)){
+      seen.add(k);
+      items.push({ key: k, url: url || ('https://' + k + '-default-rtdb.firebaseio.com') });
+    }
+  }
   // 1) full firebase URLs (firebaseio.com + firebasedatabase.app)
   const urlRe = /(?:https?:\/\/)?[a-z0-9._-]+(?:\.firebaseio\.com|\.firebasedatabase\.app)[^\s"'<>()\[\]{},;]*/gi;
   let m;
   while((m = urlRe.exec(input)) !== null){
-    const k = projectKey(m[0]);
-    if(k && !seen.has(k)){ seen.add(k); keys.push(k); }
+    let raw = m[0];
+    if(!/^https?:/i.test(raw)) raw = 'https://' + raw;
+    const host = raw.replace(/^https?:\/\//i, '').split('/')[0];
+    add(projectKey(m[0]), 'https://' + host);
   }
   // 2) bare "-default-rtdb" slugs anywhere in the text
   const slugRe = /\b[a-z0-9][a-z0-9-]*?-default-rtdb\b/gi;
   while((m = slugRe.exec(input)) !== null){
-    const k = projectKey(m[0]);
-    if(k && !seen.has(k)){ seen.add(k); keys.push(k); }
+    add(projectKey(m[0]));
   }
   // 3) whole-line tokens that look like a bare project id (e.g. "bank-e-kyc")
   for(const line of input.split(/\r?\n/)){
     const t = line.trim();
     if(!t || /[\s\/]/.test(t)) continue;
     if(!/^[a-z0-9][a-z0-9-]*$/.test(t)) continue;
-    const k = projectKey(t);
-    if(k && !seen.has(k)){ seen.add(k); keys.push(k); }
+    add(projectKey(t));
   }
-  return keys;
+  return items;
 }
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
 function compareNow(){
-  const left = extractKeys(document.getElementById('leftInput').value);
-  const right = extractKeys(document.getElementById('rightInput').value);
-  const ls = new Set(left);
-  const alag = right.filter(k => !ls.has(k));          // right - left
-  const matched = right.length - alag.length;
+  const leftItems = extractUrls(document.getElementById('leftInput').value);
+  const rightItems = extractUrls(document.getElementById('rightInput').value);
+  const leftKeys = new Set(leftItems.map(i => i.key));
+  const alagItems = rightItems.filter(i => !leftKeys.has(i.key));  // right - left
+  const alag = alagItems.map(i => i.key);
+  const matched = rightItems.length - alag.length;
   lastAlag = alag;
+  lastAlagUrls = alagItems.map(i => i.url);
 
-  document.getElementById('leftCount').textContent  = left.length + ' URLs';
-  document.getElementById('rightCount').textContent = right.length + ' URLs';
+  document.getElementById('leftCount').textContent  = leftItems.length + ' URLs';
+  document.getElementById('rightCount').textContent = rightItems.length + ' URLs';
   document.getElementById('alagCount').textContent  = alag.length + ' alag';
-  document.getElementById('statLeft').textContent   = 'Left: ' + left.length;
-  document.getElementById('statRight').textContent  = 'Right: ' + right.length;
+  document.getElementById('statLeft').textContent   = 'Left: ' + leftItems.length;
+  document.getElementById('statRight').textContent  = 'Right: ' + rightItems.length;
   document.getElementById('statMatch').textContent  = 'Match: ' + matched + ' (skip — aapke hain)';
   document.getElementById('statAlag').textContent   = 'Alag: ' + alag.length;
 
@@ -194,6 +205,19 @@ function copyMine(){
   const count = text.split(/\r?\n/).filter(Boolean).length;
   navigator.clipboard.writeText(text)
     .then(() => showToast('Copied ' + count + ' mine URL(s) ✅'))
+    .catch(() => prompt('Copy manually:', text));
+}
+
+function copyAll(){
+  const mine = document.getElementById('leftInput').value.trim();
+  if(!mine && !lastAlagUrls.length){ showToast('Kuch copy karne ko nahi'); return; }
+  const parts = [];
+  if(mine) parts.push(mine);
+  if(lastAlagUrls.length) parts.push(lastAlagUrls.join('\n'));
+  const text = parts.join('\n\n');
+  const count = mine.split(/\r?\n/).filter(Boolean).length + lastAlagUrls.length;
+  navigator.clipboard.writeText(text)
+    .then(() => showToast('Copied ' + count + ' URLs (mine + alag) ✅'))
     .catch(() => prompt('Copy manually:', text));
 }
 
