@@ -43,6 +43,8 @@
     .stat.g{color:var(--green)}.stat.r{color:var(--red)}.stat.m{color:var(--muted)}
     .out{padding:12px;max-height:420px;overflow:auto}
     .item{display:flex;gap:9px;padding:10px;margin-bottom:8px;background:rgba(255,77,114,.10);border:1px solid rgba(255,77,114,.25);border-radius:14px;word-break:break-all;font-family:Consolas,Monaco,monospace;font-size:13px;line-height:1.35;animation:item .22s ease both}
+    .item.dup{background:rgba(255,209,102,.10);border-color:rgba(255,209,102,.30)}
+    .x{font-weight:950;color:var(--yellow);font-family:Arial;font-size:12px;white-space:nowrap;margin-left:auto}
     @keyframes item{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
     .idx{min-width:30px;color:var(--muted);font-family:Arial;font-weight:950}
     .empty{height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);text-align:center;padding:30px;font-size:14px}
@@ -88,8 +90,14 @@
         <span class="stat m" id="statRight">Right: 0</span>
         <span class="stat g" id="statMatch">Match: 0 (skip — aapke hain)</span>
         <span class="stat r" id="statAlag">Alag: 0</span>
+        <span class="stat" id="statDup">Dups: 0</span>
       </div>
       <div class="out" id="alagOut"><div class="empty">Kuch compare karne ke liye dono box mein URLs paste karo 👆</div></div>
+    </section>
+
+    <section class="results" id="dupBox" style="display:none">
+      <div class="head" style="color:var(--yellow)"><span>🔁 REPEATED URLS — left box mein jo 2+ baar hain</span><span class="pill" id="dupCount">0</span></div>
+      <div class="out" id="dupOut"></div>
     </section>
   </div>
   <div class="toast" id="toast">Copied</div>
@@ -155,15 +163,55 @@ function extractUrls(text){
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
+function countKeys(text){
+  // count occurrences per project key, one key per line (no double-counting)
+  const counts = new Map();
+  function bump(k){ if(k) counts.set(k, (counts.get(k) || 0) + 1); }
+  const urlRe = /(?:https?:\/\/)?[a-z0-9._-]+(?:\.firebaseio\.com|\.firebasedatabase\.app)/i;
+  const slugRe = /\b[a-z0-9][a-z0-9-]*?-default-rtdb\b/i;
+  for(const line of String(text || '').split(/\r?\n/)){
+    const t = line.trim();
+    if(!t) continue;
+    let mm = t.match(urlRe);
+    let k = mm ? projectKey(mm[0]) : null;
+    if(!k){ mm = t.match(slugRe); k = mm ? projectKey(mm[0]) : null; }
+    if(!k && /^[a-z0-9][a-z0-9-]*$/.test(t)) k = projectKey(t);
+    bump(k);
+  }
+  return counts;
+}
+
 function compareNow(){
-  const leftItems = extractUrls(document.getElementById('leftInput').value);
-  const rightItems = extractUrls(document.getElementById('rightInput').value);
+  const leftText = document.getElementById('leftInput').value;
+  const rightText = document.getElementById('rightInput').value;
+  const leftItems = extractUrls(leftText);
+  const rightItems = extractUrls(rightText);
   const leftKeys = new Set(leftItems.map(i => i.key));
   const alagItems = rightItems.filter(i => !leftKeys.has(i.key));  // right - left
   const alag = alagItems.map(i => i.key);
   const matched = rightItems.length - alag.length;
   lastAlag = alag;
   lastAlagUrls = alagItems.map(i => i.url);
+
+  // duplicates inside the left box
+  const dupCounts = countKeys(leftText);
+  const dups = [...dupCounts.entries()].filter(e => e[1] > 1).sort((a, b) => b[1] - a[1]);
+  const dupEl = document.getElementById('dupBox');
+  const dupOut = document.getElementById('dupOut');
+  const dupStat = document.getElementById('statDup');
+  if(dups.length){
+    dupStat.textContent = 'Dups: ' + dups.length + ' (left)';
+    dupStat.style.color = 'var(--yellow)';
+    document.getElementById('dupCount').textContent = dups.length + ' repeated';
+    dupOut.innerHTML = dups.map((d, i) =>
+      '<div class="item dup"><span class="idx">' + (i + 1) + '.</span><span>' + esc(d[0]) + '</span><span class="x">×' + d[1] + '</span></div>'
+    ).join('');
+    dupEl.style.display = '';
+  } else {
+    dupStat.textContent = 'Dups: 0';
+    dupStat.style.color = '';
+    dupEl.style.display = 'none';
+  }
 
   document.getElementById('leftCount').textContent  = leftItems.length + ' URLs';
   document.getElementById('rightCount').textContent = rightItems.length + ' URLs';
