@@ -163,6 +163,37 @@ function extractUrls(text){
 
 function esc(s){ return String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
+/* Build a CLEAN list of full URLs from ANY pasted format (JS blocks,
+   comma lists, plain lines, bare slugs...). One URL per line, in input
+   order, duplicates preserved; lines without a URL are skipped. */
+function cleanUrlsFromText(text){
+  const out = [];
+  const urlRe = /(?:https?:\/\/)?[a-z0-9._-]+(?:\.firebaseio\.com|\.firebasedatabase\.app)[^\s"'<>()\[\]{},;]*/i;
+  const slugRe = /\b[a-z0-9][a-z0-9-]*?-default-rtdb\b/i;
+  for(const line of String(text || '').split(/\r?\n/)){
+    const t = line.trim();
+    if(!t) continue;
+    const mm = t.match(urlRe);
+    let url = null;
+    if(mm){
+      let raw = mm[0];
+      if(!/^https?:/i.test(raw)) raw = 'https://' + raw;
+      const host = raw.replace(/^https?:\/\//i, '').split(/[\/\s"'<>()\[\]{},;]/)[0];
+      url = 'https://' + host;
+    } else {
+      const sm = t.match(slugRe);
+      const k = sm ? projectKey(sm[0]) : (/^[a-z0-9][a-z0-9-]*$/.test(t) ? projectKey(t) : null);
+      if(k){
+        url = (k === 'sb-rex-11')
+          ? 'https://sb-rex-11-default-rtdb.asia-southeast1.firebasedatabase.app'
+          : 'https://' + k + '-default-rtdb.firebaseio.com';
+      }
+    }
+    if(url) out.push(url);
+  }
+  return out;
+}
+
 function countKeys(text){
   // count occurrences per project key, one key per line (no double-counting)
   const counts = new Map();
@@ -226,8 +257,8 @@ function compareNow(){
     el.innerHTML = '<div class="empty">✅ Koi alag URL nahi — right ke saare URLs left mein match ho gaye</div>';
     return;
   }
-  el.innerHTML = alag.map((k, i) =>
-    '<div class="item"><span class="idx">' + (i + 1) + '.</span><span>' + esc(k) + '</span></div>'
+  el.innerHTML = alagItems.map((it, i) =>
+    '<div class="item"><span class="idx">' + (i + 1) + '.</span><span>' + esc(it.url) + '</span></div>'
   ).join('');
 }
 
@@ -240,32 +271,32 @@ function showToast(msg){
 }
 
 function copyAlag(){
-  if(!lastAlag.length){ showToast('Kuch copy karne ko nahi — 0 alag'); return; }
-  const text = lastAlag.join('\n');
+  if(!lastAlagUrls.length){ showToast('Kuch copy karne ko nahi — 0 alag'); return; }
+  const text = lastAlagUrls.join('\n');
   navigator.clipboard.writeText(text)
-    .then(() => showToast('Copied ' + lastAlag.length + ' alag URL(s) ✅'))
+    .then(() => showToast('Copied ' + lastAlagUrls.length + ' alag URL(s) ✅'))
     .catch(() => prompt('Copy manually:', text));
 }
 
 function copyMine(){
-  const text = document.getElementById('leftInput').value.trim();
-  if(!text){ showToast('Left box khaali hai — pehle apne URLs daalo'); return; }
-  const count = text.split(/\r?\n/).filter(Boolean).length;
+  const urls = cleanUrlsFromText(document.getElementById('leftInput').value);
+  if(!urls.length){ showToast('Left box khaali hai — pehle apne URLs daalo'); return; }
+  const text = urls.join('\n');
   navigator.clipboard.writeText(text)
-    .then(() => showToast('Copied ' + count + ' mine URL(s) ✅'))
+    .then(() => showToast('Copied ' + urls.length + ' mine URL(s) ✅'))
     .catch(() => prompt('Copy manually:', text));
 }
 
 function copyAll(){
-  const mine = document.getElementById('leftInput').value.trim();
-  if(!mine && !lastAlagUrls.length){ showToast('Kuch copy karne ko nahi'); return; }
+  const mine = cleanUrlsFromText(document.getElementById('leftInput').value);
+  if(!mine.length && !lastAlagUrls.length){ showToast('Kuch copy karne ko nahi'); return; }
   const parts = [];
-  if(mine) parts.push(mine);
+  if(mine.length) parts.push(mine.join('\n'));
   if(lastAlagUrls.length) parts.push(lastAlagUrls.join('\n'));
   const text = parts.join('\n\n');
-  const count = mine.split(/\r?\n/).filter(Boolean).length + lastAlagUrls.length;
+  const count = mine.length + lastAlagUrls.length;
   navigator.clipboard.writeText(text)
-    .then(() => showToast('Copied ' + count + ' URLs (mine + alag) ✅'))
+    .then(() => showToast('Copied ' + count + ' clean URLs (mine + alag) ✅'))
     .catch(() => prompt('Copy manually:', text));
 }
 
